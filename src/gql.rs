@@ -6,6 +6,7 @@ use chrono::{DateTime, Utc};
 
 use super::Context;
 use crate::model::Tool;
+use chrono::format::strftime::StrftimeItems;
 
 pub struct Query;
 pub struct Mutations;
@@ -55,16 +56,13 @@ graphql_object!(Mutations: Context |&self| {
         author_full_name: Option<String>,
         author_email: Option<String>,
         author_link: Option<String>,
-        clicks: Option<String>,
-        likes: Option<String>,
         additional_data: Option<String>,
-        meta_data: Option<String>, 
-        created: Option<String>, 
-        state: bool
+        meta_data: Option<String>,  
     ) -> FieldResult<Option<Tool>> {
         let context = executor.context();
         let id = id.map(|id| ObjectId::with_string(&id)).map_or(Ok(None), |v| v.map(Some))?;
         let now: DateTime<Utc> = Utc::now();
+        let fmt = StrftimeItems::new("%Y-%m-%d %H:%M:%S");
         let tool = Tool {
             id: id,
             tool_name: tool_name,
@@ -74,14 +72,50 @@ graphql_object!(Mutations: Context |&self| {
             author_full_name: author_full_name.unwrap_or_else( || "".into()),
             author_email: author_email.unwrap_or_else( || "".into()),
             author_link: author_link.unwrap_or_else( || "".into()),
-            clicks: clicks.unwrap_or_else( || "0".into() ),
-            likes: likes.unwrap_or_else( || "0".into() ),
+            clicks: "0".into(),
+            likes: "0".into(),
             additional_data: additional_data.unwrap_or_else( || "".into()),
             meta_data: meta_data.unwrap_or_else( || "".into()),
-            created: created.unwrap_or_else( || format!("{:?}",now.format("%a %b %e %T %Y")) ),
+            created: format!("{}", now.format_with_items(fmt)),
             state: false
         };
 
         Ok(context.db.save_tool(tool)?)
     }
+    field updateTool(&executor,
+        id: String,
+        tool_name: Option<String>,
+        tool_link: Option<String>,
+        tags: Option<String>,
+        tool_description: Option<String>,
+        author_full_name: Option<String>,
+        author_email: Option<String>,
+        author_link: Option<String>,
+        clicks: Option<String>,
+        likes: Option<String>,
+        additional_data: Option<String>,
+        meta_data: Option<String>,
+        state: Option<bool>
+    ) -> FieldResult<Option<Tool>> {
+        let context = executor.context();
+        let current_tool = &context.db.get_tool(&id)?;
+        let tool = Tool {
+            id: Some(ObjectId::with_string(&id)?),
+            tool_name: tool_name.unwrap_or_else(|| String::from(&current_tool.as_ref().unwrap().tool_name)),
+            tool_link: tool_link.unwrap_or_else(|| String::from(&current_tool.as_ref().unwrap().tool_link)),
+            tags: tags.unwrap_or_else(|| String::from(&current_tool.as_ref().unwrap().tags)), 
+            tool_description: tool_description.unwrap_or_else( || String::from(&current_tool.as_ref().unwrap().tool_description)),
+            author_full_name: author_full_name.unwrap_or_else( || String::from(&current_tool.as_ref().unwrap().author_full_name)),
+            author_email: author_email.unwrap_or_else( || String::from(&current_tool.as_ref().unwrap().author_email)),
+            author_link: author_link.unwrap_or_else( || String::from(&current_tool.as_ref().unwrap().author_link)),
+            clicks: clicks.unwrap_or_else( || String::from(&current_tool.as_ref().unwrap().clicks)),
+            likes: likes.unwrap_or_else( || String::from(&current_tool.as_ref().unwrap().likes)),
+            additional_data: additional_data.unwrap_or_else( || String::from(&current_tool.as_ref().unwrap().additional_data)),
+            meta_data: meta_data.unwrap_or_else( || String::from(&current_tool.as_ref().unwrap().meta_data)),
+            created: String::from(&current_tool.as_ref().unwrap().created),
+            state: state.unwrap_or_else( || &current_tool.as_ref().unwrap().state == &true),
+        };
+        Ok(context.db.update_tool(tool)?)
+    }
+
 });

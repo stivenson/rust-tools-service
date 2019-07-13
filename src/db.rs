@@ -1,6 +1,5 @@
 use bson::{from_bson, oid::ObjectId, to_bson, Bson, Document};
 use mongodb::{
-    coll::options::{FindOneAndUpdateOptions, ReturnDocument},
     coll::Collection,
     db::ThreadedDatabase,
     Client, ThreadedClient,
@@ -48,34 +47,38 @@ impl Db {
 
         if let Bson::Document(mut doc) = to_bson(&prod)? {
             doc.remove("_id");
+            let res = coll.insert_one(doc, None)?;
+            if let Some(exception) = res.write_exception {
+                return Err(Error::from(exception));
+            }
+            if let Some(inserted_id) = res.inserted_id {
+                if let Bson::ObjectId(id) = inserted_id {
+                    self.get_tool(&id.to_hex())
+                } else {
+                    Err(Error::Custom("No valid id returned after insert".into()))
+                }
+            } else {
+                Err(Error::Custom("No data returned after insert".into()))
+            }
+        } else {
+            Err(Error::Custom("Invalid document".into()))
+        }
+    }
+
+    pub fn update_tool(&self, prod: Tool) -> Result<Option<Tool>, Error> {
+        let coll: Collection = self.client.db(&self.db_name).collection("tools");
+
+        if let Bson::Document(doc) = to_bson(&prod)? {
             if let Some(ref id) = prod.id {
                 let filter = doc!{ "_id": Bson::ObjectId(id.clone()) };
-                let write_options = FindOneAndUpdateOptions {
-                    return_document: Some(ReturnDocument::After),
-                    ..Default::default()
-                };
-                let res = coll.find_one_and_replace(filter, doc, Some(write_options))?;
-                if let Some(res) = res {
-                    Ok(Some(from_bson::<Tool>(Bson::Document(res))?))
+                let res = coll.update_one(filter, doc, None)?;
+                if let Some(_upserted_id) = res.upserted_id {
+                    self.get_tool(&id.to_hex())
                 } else {
                     Err(Error::Custom("No data returned after update".into()))
                 }
             } else {
-                let res = coll.insert_one(doc, None)?;
-
-                if let Some(exception) = res.write_exception {
-                    return Err(Error::from(exception));
-                }
-
-                if let Some(inserted_id) = res.inserted_id {
-                    if let Bson::ObjectId(id) = inserted_id {
-                        self.get_tool(&id.to_hex())
-                    } else {
-                        Err(Error::Custom("No valid id returned after insert".into()))
-                    }
-                } else {
-                    Err(Error::Custom("No data returned after insert".into()))
-                }
+                Err(Error::Custom("The Id is neccessary".into()))
             }
         } else {
             Err(Error::Custom("Invalid document".into()))

@@ -86,7 +86,7 @@ fn build_response(response: Result<Vec<u8>, serde_json::Error>) -> warp::http::R
 }
 
 fn main() {
-    // To this example is neccesary use nightly version of rust
+    // Neccesary use nightly version of rust
     pretty_env_logger::init();
     let ctx = Context {
         db: Arc::new(Db::new(&env::var("TOOLS_SERVICE_DB_URI").unwrap())),
@@ -97,6 +97,7 @@ fn main() {
 
     let routes = gql_index.or(gql_query);
     // set RUST_LOG=warp
-    let raw_pointer_port = &env::var("TOOLS_SERVICE_PORT_SERVICE").unwrap() as *const String;
-    warp::serve(routes).unstable_pipeline().run( ([127, 0, 0, 1], raw_pointer_port as u16) )
+    let port: u16 = env::var("TOOLS_SERVICE_PORT_SERVICE").unwrap().parse().unwrap_or(3030);
+    println!("listening for: 127.0.0.1:{:?}", &port);
+    warp::serve(routes).unstable_pipeline().run(([127, 0, 0, 1], port))
 }
