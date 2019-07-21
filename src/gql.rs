@@ -35,6 +35,10 @@ graphql_object!(Query: Context |&self| {
       "1.0"
     }
 
+    field token() -> &str {
+        "<a temporal string toke>"
+    }
+
     field tools(&executor, skip: String, limit: String) -> FieldResult<Vec<Tool>> {
     let context = executor.context();
         Ok(context.db.list_tools(skip, limit)?)
