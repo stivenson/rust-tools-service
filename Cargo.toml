@@ -6,8 +6,8 @@ edition = "2018"
 
 [dependencies]
 juniper = "0.9"
-mongodb = "0.3.12"
 bson = "0.13.0"
+mongodb = "0.3.12"
 serde = "1"
 serde_derive = "1"
 warp = "0.1"

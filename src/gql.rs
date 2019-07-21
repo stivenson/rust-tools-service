@@ -11,7 +11,7 @@ use chrono::format::strftime::StrftimeItems;
 pub struct Query;
 pub struct Mutations;
 
-graphql_object!(Tool: Context |&self| {
+graphql_object!(Tool: Context |&self| { 
     field id() -> String { if let Some(ref id) = self.id { id.to_hex() } else { "".into() } }
     field tool_name() -> &str { self.tool_name.as_str() }
     field tool_link() -> &str { self.tool_link.as_str() }
@@ -35,9 +35,9 @@ graphql_object!(Query: Context |&self| {
       "1.0"
     }
 
-    field tools(&executor) -> FieldResult<Vec<Tool>> {
+    field tools(&executor, skip: String, limit: String) -> FieldResult<Vec<Tool>> {
     let context = executor.context();
-        Ok(context.db.list_tools()?)
+        Ok(context.db.list_tools(skip, limit)?)
     }
 
     field tool(&executor, id: String) -> FieldResult<Option<Tool>> {
